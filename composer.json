@@ -1,0 +1,13 @@
+{
+    "name": "alfoncito/web-mi-divisa",
+    "description": "Precio actual del dolar respecto al bolivar soberano, conversor y grafico de historico.",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Alfoncito",
+            "email": "alfonzo.dev@outlook.es"
+        }
+    ],
+    "require": {}
+}
