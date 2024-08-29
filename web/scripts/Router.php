@@ -31,8 +31,17 @@ class Router
 				$uri = $_SERVER['REQUEST_URI'];
 				$file = $dir . $uri;
 
-				if (file_exists($file))
+				if (file_exists($file)) {
+					$ext = substr($file, strrpos($file, '.') + 1);
+
+					if ($ext === 'css')
+						header('Content-type: text/css');
+					else if ($ext === 'js')
+						header('Content-type: application/javascript');
+					else if ($ext === 'json')
+						header('Content-type: application/json');
 					readfile($file);
+				}
 			}
 		]);
 	}
@@ -48,6 +57,7 @@ class Router
 			}
 		}
 
-		(self::$default_get)();
+		if (isset(self::$default_get))
+			(self::$default_get)();
 	}
 }
