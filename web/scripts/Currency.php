@@ -6,11 +6,11 @@ class Currency
 
 	static public function current(): float
 	{
-		if (self::currencies_need_update())
+		if (self::file_need_update(CURRENCIES_PATH))
 			self::currencies_update();
 
 		$fp = fopen(CURRENCIES_PATH, 'r');
-		$ves_price;
+		$ves_price = null;
 
 		while(!feof($fp)) {
 			$currency = fgetcsv($fp);
@@ -26,12 +26,12 @@ class Currency
 
 	static public function price(string $from, string $to): float
 	{
-		if (self::currencies_need_update())
+		if (self::file_need_update(CURRENCIES_PATH))
 			self::currencies_update();
 
 		$from_price = null;
 		$to_price = null;
-		$price;
+		$price = null;
 
 		$from = strtoupper($from);
 		$to = strtoupper($to);
@@ -49,17 +49,18 @@ class Currency
 				break;
 			$currency = fgetcsv($fp);
 		}
+		fclose($fp);
 		return $to_price / $from_price;
 	}
 
 	static public function get_symbols(): array
 	{
-		if (self::currencies_need_update())
+		if (self::file_need_update(CURRENCIES_PATH))
 			self::currencies_update();
 
 		$fp = fopen(CURRENCIES_PATH, 'rt');
-		$symbols = [];
 		$currency = fgetcsv($fp);
+		$symbols = [];
 
 		while($currency) {
 			array_push($symbols, [
@@ -72,33 +73,18 @@ class Currency
 		return $symbols;
 	}
 
-	static private function currencies_need_update(): bool
-	{
-		if (!file_exists(CURRENCIES_PATH))
-			return true;
-
-		$date_time = new DateTime;
-
-		$date_time->setTimestamp(filectime(CURRENCIES_PATH));
-		$need_update = date('Ymd') !== $date_time->format('Ymd');
-		return $need_update;
-	}
-
 	static private function currencies_update(): void
 	{
-		$http_query = http_build_query([
+		$latest_result = self::curl_request('latest', [
 			'base_currency' => 'USD',
 			'type' => 'fiat'
 		]);
-		$url = self::BASE . 'latest?' . $http_query;
-		$latest_result = self::curl_request($url);
-
-		$http_query = http_build_query(['type' => 'fiat']);
-		$url = self::BASE . 'currencies?' . $http_query;
-		$currencies_result = self::curl_request($url);
-
+		$curr_result = self::curl_request('currencies', [
+			'type' => 'fiat'
+		]);
 		$fp = fopen(CURRENCIES_PATH, 'w+t');
-		foreach($currencies_result['data'] as $symbol => $currency) {
+
+		foreach($curr_result['data'] as $symbol => $currency) {
 			$price = $latest_result['data'][$symbol]['value'];
 			$name = $currency['name'];
 			$symbol_native = $currency['symbol_native'];
@@ -121,36 +107,6 @@ class Currency
 		return file_get_contents(HISTORY_PATH);
 	}
 
-	static public function history_update(): void
-	{
-		$interval = new DateInterval('P7D');
-		$date = new DateTime();
-		$history = [];
-
-		for ($i = 0; $i < 5; $i++) {
-			$url = self::build_url('historical', [
-				'date' => $date->format('Y-m-d'),
-				'base_currency' => 'USD',
-				'currencies' => 'VES',
-				'type' => 'fiat'
-			]);
-			$history_result = self::curl_request($url);
-			$str_time = $history_result['meta']['last_updated_at'];
-			$value = $history_result['data']['VES']['value'];
-
-			array_push($history, [
-				'date' => date('d-m-Y', strtotime($str_time)),
-				'value' => $value
-			]);
-			$date->sub($interval);
-		}
-
-		file_put_contents(
-			HISTORY_PATH,
-			json_encode($history)
-		);
-	}
-
 	static private function file_need_update(string $file): bool
 	{
 		if (!file_exists($file))
@@ -163,20 +119,38 @@ class Currency
 		return $need_update;
 	}
 
-	static private function build_url(
-		string $action,
-		?array $query = null
-	): string
+	static public function history_update(): void
 	{
-		$url = self::BASE . $action;
-		if (is_array($query))
-			$url .= '?' . http_build_query($query);
+		$interval = new DateInterval('P7D');
+		$date = new DateTime();
+		$history = [];
 
-		return $url;
+		for ($i = 0; $i < 5; $i++) {
+			$history_result = self::curl_request('historical', [
+				'date' => $date->format('Y-m-d'),
+				'base_currency' => 'USD',
+				'currrencies' => 'VES',
+				'type' => 'fiat'
+			]);
+			$str_time = $history_result['meta']['last_updated_at'];
+			$value = $history_result['data']['VES']['value'];
+
+			array_push($history, [
+				'date' => date('d-m-Y', strtotime($str_time)),
+				'value' => $value
+			]);
+			$date->sub($interval);
+		}
+
+		file_put_contents(HISTORY_PATH, json_encode($history));
 	}
 
-	static private function curl_request(string $url): array
+	static private function curl_request(
+		string $action,
+		?array $query = null
+	): array
 	{
+		$url = self::build_url($action, $query);
 		$ch = curl_init();
 
 		curl_setopt_array($ch, [
@@ -189,5 +163,17 @@ class Currency
 		$result = curl_exec($ch);
 		curl_close($ch);
 		return json_decode($result, true);
+	}
+
+	static private function build_url(
+		string $action,
+		?array $query = null
+	): string
+	{
+		$url = self::BASE . $action;
+		if (is_array($query))
+			$url .= '?' . http_build_query($query);
+
+		return $url;
 	}
 }

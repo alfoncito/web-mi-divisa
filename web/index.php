@@ -12,23 +12,33 @@ require 'web/scripts/Currency.php';
 //echo $_SERVER['DOCUMENT_ROOT'];
 
 printf(
-	'El precio actual del bolivar es %f BS.',
+	'<p>El precio actual del bolivar es %f BS.</p>',
 	Currency::current()
 );
 
-//echo "<h1>Las monedas disponibles son:</h1>";
-//
-//echo sprintf(
-//	"<p>Un bolivar son <b>%f</b> pesos colombianos</p>",
-//	Currency::price('VES', 'COP')
-//);
-//
-//foreach(Currency::get_symbols() as $currency)
-//	printf(
-//		"<p><b>%s</b>: %s</p>",
-//		$currency['symbol'],
-//		$currency['name']
-//	);
+printf(
+	'<p>Un bolivar son <b>%f.3</b> dolares</p>',
+	Currency::price('VES', 'USD')
+);
 
-echo '<br/>';
-print_r(Currency::history());
+echo "<h3>Las monedas disponibles son:</h3>";
+foreach(Currency::get_symbols() as $currency)
+	printf(
+		"<p><b>%s</b>: %s</p>",
+		$currency['symbol'],
+		$currency['name']
+	);
+
+$history = json_decode(Currency::history(), true);
+
+echo '<h3>Historial</h3>';
+
+foreach($history as $curr) {
+	$v = round((float) $curr['value'], 3);
+	$w = $v * 5;
+	$d = $curr['date'];
+
+	echo "<span>$d</span>";
+	echo "<span style='width:{$w};height:50px;background-color:royalblue;display:inline-block;margin-left:16px;color:white;padding:8px'>{$v}</span>";
+	echo "<br/>";
+}
