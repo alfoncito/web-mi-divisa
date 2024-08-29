@@ -9,5 +9,8 @@
             "email": "alfonzo.dev@outlook.es"
         }
     ],
+    "scripts": {
+			"dev": "php -S localhost:8000 web/index.php"
+    },
     "require": {}
 }
