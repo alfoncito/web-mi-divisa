@@ -17,9 +17,14 @@ Router::get('/api-history', api_history(...));
 
 Router::get('/test', function(): void
 {
-	$file = 'mi.archivo.loquesea.txt';
-	$ext = substr($file, strrpos($file, '.') + 1);
-	echo $ext;
+	echo '<h3>Esto es solo de prueba</h3>';
+	/*
+	$url = 'https://api.currencyapi.com/v3/range?currencies=abc&apikey=' . CURRENCY_API_KEY;
+	$headers = get_headers($url, true);
+
+	foreach($headers as $k => $v)
+		echo "<p>$k: $v</p>";
+	*/
 });
 
 Router::public_dir(

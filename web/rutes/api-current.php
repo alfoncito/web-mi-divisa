@@ -3,10 +3,20 @@
 function api_current(): void
 {
 	header('Content-type: application/json');
+	$response = null;
 
-	echo json_encode([
-		'success' => true,
-		'code' => 200,
-		'result' => 'Chanchito dev'
-	]);
+	try {
+		$response = [
+			'success' => true,
+			'code' => 200,
+			'result' => Currency::current()
+		];
+	} catch (Exception $e) {
+		$response = [
+			'success' => false,
+			'code' => 500,
+			'result' => null
+		];
+	}
+	echo json_encode($response);
 }

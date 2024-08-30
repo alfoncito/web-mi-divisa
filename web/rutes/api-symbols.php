@@ -3,15 +3,20 @@
 function api_symbols(): void
 {
 	header('Content-type: application/json');
+	$response = null;
 
-	echo json_encode([
-		'success' => true,
-		'code' => 200,
-		'result' => [
-			['symbol' => 'VES', 'name' => 'Bolivar soberano'],
-			['symbol' => 'USD', 'name' => 'Dolar'],
-			['symbol' => 'EUR', 'name' => 'Euro'],
-			['symbol' => 'COP', 'name' => 'Peso colombiano']
-		]
-	]);
+	try {
+		$response = [
+			'success' => true,
+			'code' => 200,
+			'result' => Currency::get_symbols()
+		];
+	} catch (Exception $e) {
+		$response = [
+			'success' => false,
+			'code' => 500,
+			'result' => null
+		];
+	}
+	echo json_encode($response);
 }
