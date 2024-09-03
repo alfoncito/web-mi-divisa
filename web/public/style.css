@@ -2,3 +2,8 @@ html {
 	background-color: #222;
 	color: #ddd;
 }
+
+button,
+input[type="submit"] {
+	cursor: pointer;
+}

@@ -20,7 +20,31 @@ function home(): void
 			</head>
 			<body>
 				<main>
-					<h1>Hola mundo</h1>
+					<h1>Mi divisa</h1>
+					<section class='currency'>
+						<div>
+							<button
+								type='button'
+								id='btn-current'
+							>
+								Precio dolar
+							</button>
+							<button
+								type='button'
+								id='btn-exchange'
+							>
+								Conversor
+							</button>
+							<button
+								type='button'
+								id='btn-history'
+							>
+								Historico
+							</button>
+						</div>
+						<h2 id='currency-title'></h2>
+						<div id='currency-body'></div>
+					</section>
 				</main>
 			</body>
 			<script src='/public/index.js'></script>
