@@ -1,3 +1,5 @@
+const NS = 'http://www.w3.org/2000/svg';
+
 const main = () => {
 	// testApi();
 	currencyApp();
@@ -14,7 +16,7 @@ const currencyApp = () => {
 	const changeTo = (title, tab) => () => {
 		changeHandler?.();
 		changeHandler = null;
-		
+
 		$title.textContent = title;
 		$body.innerHTML = '';
 
@@ -37,7 +39,7 @@ const currencyApp = () => {
 		changeTo('Historico del dolar', historyTab)
 	);
 
-	changeTo('Conversor', exchangeTab)();
+	changeTo('Histórico del dólar', historyTab)();
 };
 
 const currentTab = ($body, onChange) => {
@@ -68,14 +70,14 @@ const exchangeTab = ($body, onChange) => {
 		exchangePrice = 0,
 		symAborter = new AbortController(),
 		priceAborter;
-		
+
 	$body.insertAdjacentHTML(
 		'afterbegin',
 		htmlExchange()
 	);
 
 	$inputResult = getElm('input-result');
-	
+
 	fromField = createSymbolField('input-from', suggList);
 	toField = createSymbolField('input-to', suggList);
 
@@ -108,7 +110,12 @@ const exchangeTab = ($body, onChange) => {
 		let params = new URLSearchParams(),
 			$inputAmound = getElm('input-amound');
 
-		priceAborter?.abort();
+		priceAborter?.abort(
+			new DOMException(
+				'Petición del precio cancelada',
+				'fetchCancel'
+			)
+		);
 		priceAborter = new AbortController();
 
 		params.append('from', fromField.getValue());
@@ -124,7 +131,12 @@ const exchangeTab = ($body, onChange) => {
 				exchangePrice = data.result;
 				displayExchange($inputAmound.value);
 			}).
-			catch((e) => console.log(e));
+			catch((e) => {
+				if (e.name === 'aborted' || e.name === 'fetchCancel')
+					console.log(e.message);
+				else
+					console.error(e);
+			});
 	};
 
 	bindEvent('btn-change', {
@@ -154,14 +166,29 @@ const exchangeTab = ($body, onChange) => {
 	fetch('/api-symbols', { signal: symAborter.signal })
 		.then(res => res.json())
 		.then(data => suggList.setSymbols(data.result))
-		.catch((e) => console.log(e));
+		.catch((e) => {
+			if (e.name === 'aborted')
+				console.log(e.message);
+			else
+				console.error(e);
+		});
 
 	fetchPrice();
 
 	onChange(() => {
 		suggList.clear();
-		symAborter.abort();
-		priceAborter?.abort();
+		symAborter.abort(
+			new DOMException(
+				'Petición abortada por el usuario',
+				'aborted'
+			)
+		);
+		priceAborter?.abort(
+			new DOMException(
+				'Petición abortada por el usuario',
+				'aborted'
+			)
+		);
 	});
 };
 
@@ -423,11 +450,167 @@ const createSuggList = () => {
 	};
 }
 
-const historyTab = ($body) => {
-	$body.insertAdjacentHTML(
+const historyTab = ($body, onChange) => {
+	let aborter = new AbortController();
+	
+	const handleFetch = (data) => {
+		let $container = createHistoricalContainer(),
+			max = calcIntervalMax(data.result, 5);
+
+		$container.appendChild(
+			createHistoricalValuesAxis(5, max)
+		);
+		$container.appendChild(
+			createHistoricalChart(data.result, max)
+		);
+		$container.appendChild(
+			createHistoricalDateAxis(data.result)
+		);
+
+		$body.appendChild($container);
+	};
+
+	fetch('/api-history', { signal: aborter.signal })
+		.then(res => res.json())
+		.then(handleFetch)
+		.catch(e => {
+			if (e.name === 'aborted')
+				console.log(e.message);
+			else
+				console.error(e);
+		});
+
+	onChange(() => {
+		aborter.abort(
+			new DOMException(
+				'Petición abortada por el usuario',
+				'aborted'
+			)
+		);
+	});
+};
+
+const calcIntervalMax = (historical, numIntervals) => {
+	let values = historical.map(h => h.value),
+		max = Math.max(...values),
+		interval = max / numIntervals,
+		zeros;
+
+	interval = Math.ceil(interval);
+	zeros = Math.floor(interval.toString().length / 2);
+
+	interval /= 10 ** zeros;
+	interval = Math.ceil(interval);
+	interval *= 10 ** zeros;
+	return interval * numIntervals;
+};
+
+const createHistoricalContainer = () => {
+	let $div = document.createElement('div');
+
+	return $div;
+};
+
+const createHistoricalValuesAxis = (numIntervals, max) => {
+	let $div = document.createElement('div'),
+		interval = max / numIntervals;
+
+	for(let i = 1; i <= numIntervals; i++) {
+		let value = i * interval;
+		
+		$div.insertAdjacentHTML(
+			'beforeend',
+			`<span>${value} BS</span>`
+		);
+	}
+	return $div;
+};
+
+const createHistoricalChart = (historical, max) => {
+	let $svg = document.createElementNS(NS, 'svg'),
+		xInterval = 15 / historical.length,
+		xOffset = xInterval / 2,
+		dots = [];
+
+	$svg.setAttribute('viewBox', '0 0 15 10');
+
+	historical.forEach((h, index) => {
+		let x = index * xInterval + xOffset,
+			y = (1 - h.value / max) * 10;
+
+		dots.push({ x, y });
+		$svg.appendChild(createDotHistorical(x, y, h));
+	});
+
+	$svg.prepend(createLineHistorical(dots));
+	return $svg;
+};
+
+const createLineHistorical = (dots) => {
+	let $path = document.createElementNS(NS, 'path'),
+		d = '';
+
+	dots.forEach((dot, index) => {
+		let comm = index === 0 ? 'M' : 'L';
+
+		d += `${comm}${dot.x},${dot.y}`;
+	});
+
+	$path.setAttribute('d', d);
+	$path.setAttribute('fill', 'none');
+	$path.setAttribute('stroke', 'lime');
+	$path.setAttribute('stroke-width', 0.1);
+
+	return $path;
+};
+
+const createDotHistorical = (x, y, h) => {
+	let $cir = document.createElementNS(NS, 'circle'),
+		$popover = null;
+
+	$cir.setAttribute('cx', x);
+	$cir.setAttribute('cy', y);
+	$cir.setAttribute('r', 0.3);
+	$cir.setAttribute('fill', 'lime');
+
+	bindEvent($cir, {
+		mouseenter() {
+			$popover = createPopover(x, y, h);
+			document.body.appendChild($popover);
+		},
+		mouseleave() {
+			$popover?.remove();
+		}
+	});
+
+	return $cir;
+};
+
+const createPopover = (x, y, h) => {
+	let $div = document.createElement('div');
+
+	$div.classList.add('popover');
+	$div.insertAdjacentHTML(
 		'afterbegin',
-		'<h3>Yo avia ponido mi historial aqui</h3>'
+		`
+			<time datetime='${h.date}'>${h.date}</time>
+			<h4>${roundAccuracy(h.value, 3)} VES</h4>
+		`
 	);
+
+	return $div;
+};
+
+const createHistoricalDateAxis = (historical) => {
+	let $div = document.createElement('div');
+
+	historical.forEach(h => {
+		$div.insertAdjacentHTML(
+			'beforeend',
+			`<time datetime='${h.date}'>${h.date}</time>`
+		);
+	});
+	return $div;
 };
 
 const bindEvent = (elmOrId, objEvent) => {
