@@ -88,6 +88,7 @@ class Currency
 			]);
 			$fp = fopen(CURRENCIES_PATH, 'w+t');
 
+			ksort($curr_result['data']);
 			foreach($curr_result['data'] as $symbol => $currency) {
 				$price = $latest_result['data'][$symbol]['value'];
 				$name = $currency['name'];
@@ -118,12 +119,15 @@ class Currency
 
 	static private function file_need_update(string $file): bool
 	{
+		// Temporal
+		return false;
+
 		if (!file_exists($file))
 			return true;
 
-		$date_time = new DateTime;
+		$c_time = filectime($file);
+		$date_time = new DateTime("@$c_time");
 
-		$date_time->setTimestamp(filectime($file));
 		$need_update = date('Ymd') !== $date_time->format('Ymd');
 		return $need_update;
 	}
@@ -153,6 +157,7 @@ class Currency
 				$date->sub($interval);
 			}
 
+			$history = array_reverse($history);
 			file_put_contents(HISTORY_PATH, json_encode($history));
 		} catch (Exception $e) {
 			if (!file_exists(HISTORY_PATH))

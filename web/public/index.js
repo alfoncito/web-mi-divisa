@@ -1,10 +1,5 @@
 const NS = 'http://www.w3.org/2000/svg';
 
-const main = () => {
-	// testApi();
-	currencyApp();
-};
-
 const currencyApp = () => {
 	let $title = getElm('currency-title'),
 		$body = getElm('currency-body'),
@@ -29,27 +24,31 @@ const currencyApp = () => {
 
 	$btnCurrent.addEventListener(
 		'click',
-		changeTo('Precio del dia', currentTab)
+		changeTo('Precio del día', currentTab)
 	);
 	$btnExchange.addEventListener(
 		'click',
 		changeTo('Conversor', exchangeTab)
 	);
-	$btnHistory.addEventListener('click',
-		changeTo('Historico del dolar', historyTab)
+	$btnHistory.addEventListener(
+		'click',
+		changeTo('Histórico del dólar', historyTab)
 	);
 
-	changeTo('Histórico del dólar', historyTab)();
+	changeTo('Precio del día', currentTab)();
 };
 
 const currentTab = ($body, onChange) => {
-	let aborter = new AbortController();
+	let aborter = new AbortController(),
+		$loader = createLoader();
 
+	$body.appendChild($loader);
 	fetch('/api-current', { signal: aborter.signal })
 		.then(res => res.json())
 		.then(data => {
 			let value = data.result;
 
+			$body.removeChild($loader);
 			$body.insertAdjacentHTML(
 				'afterbegin',
 				`<h3>${roundAccuracy(value, 3)} BS.</h3>`
@@ -212,7 +211,10 @@ const htmlExchange = () => {
 						type='button'
 						tabindex='-1'
 					>
-						Cambiar
+						<img
+							src='/public/img/arrow-left-right.svg'
+							alt='Intercambio de divisas'
+						/>
 					</button>
 				</div>
 				<div>
@@ -388,7 +390,7 @@ const createSuggList = () => {
 			);
 		} else {
 			$frag.appendChild(
-				_emptyRow('Cargando...')
+				_emptyRow(createLoader().outerHTML)
 			);
 		}
 
@@ -451,8 +453,10 @@ const createSuggList = () => {
 }
 
 const historyTab = ($body, onChange) => {
-	let aborter = new AbortController();
-	
+	let aborter = new AbortController(),
+		$loader = createLoader();
+
+	$body.appendChild($loader);
 	const handleFetch = (data) => {
 		let $container = createHistoricalContainer(),
 			max = calcIntervalMax(data.result, 5);
@@ -467,6 +471,7 @@ const historyTab = ($body, onChange) => {
 			createHistoricalDateAxis(data.result)
 		);
 
+		$body.removeChild($loader);
 		$body.appendChild($container);
 	};
 
@@ -613,6 +618,13 @@ const createHistoricalDateAxis = (historical) => {
 	return $div;
 };
 
+const createLoader = (extraClasses = []) => {
+	let $loader = document.createElement('div');
+
+	$loader.classList.add('spinner', ...extraClasses);
+	return $loader;
+};
+
 const bindEvent = (elmOrId, objEvent) => {
 	let $elm = typeof elmOrId === 'string'
 		? getElm(elmOrId)
@@ -651,27 +663,27 @@ const phpStrPos = (compare, subStr) => {
 	return null;
 };
 
-const testApi = () => {
-	fetch('/api-current')
-		.then(res => res.json())
-		.then(data => console.log(data));
-
-	fetch('/api-symbols')
-		.then(res => res.json())
-		.then(data => console.log(data));
-
-	let params = new URLSearchParams();
-
-	params.append('from', 'VES');
-	params.append('to', 'abc');
-
-	fetch(`/api-price?${params}`)
-		.then(res => res.json())
-		.then(data => console.log(data));
-		
-	fetch('/api-history')
-		.then(res => res.json())
-		.then(data => console.log(data));
+const arrayIncludeAsc = (arr, value) => {
+	return arrayIncludeAscRecursive(
+		arr,
+		value,
+		0,
+		arr.length - 1
+	);
 };
 
-document.addEventListener('DOMContentLoaded', main);
+const arrayIncludeAscRecursive = (arr, value, left, right) => {
+	if (left > right)
+		return false;
+
+	let mid = left + Math.floor((right - left) / 2);
+
+	if (arr[mid] === value)
+		return true;
+	else if (arr[mid] > value)
+		return arrayIncludeAscRecursive(arr, value, left, mid - 1);
+	else
+		return arrayIncludeAscRecursive(arr, value, mid + 1, right);
+};
+
+document.addEventListener('DOMContentLoaded', currencyApp);

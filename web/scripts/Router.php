@@ -32,7 +32,7 @@ class Router
 				$file = $dir . $uri;
 
 				if (file_exists($file)) {
-					$ext = substr($file, strrpos($file, '.') + 1);
+					$ext = pathinfo($file, PATHINFO_EXTENSION);
 
 					if ($ext === 'css')
 						header('Content-type: text/css');
@@ -40,7 +40,15 @@ class Router
 						header('Content-type: application/javascript');
 					else if ($ext === 'json')
 						header('Content-type: application/json');
+					else {
+						$mime = mime_content_type($file);
+						header("Content-type: $mime");
+					}
+
+					http_response_code(200);
 					readfile($file);
+				} else {
+					http_response_code(404);
 				}
 			}
 		]);
@@ -53,7 +61,7 @@ class Router
 		foreach(self::$rutes as list($regexp, $func)) {
 			if (preg_match($regexp, $uri)) {
 				$func();
-				return;
+				exit();
 			}
 		}
 

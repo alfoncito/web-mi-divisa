@@ -15,16 +15,9 @@ Router::get('/api-symbols', api_symbols(...));
 Router::get('/api-price', api_price(...));
 Router::get('/api-history', api_history(...));
 
-Router::get('/test', function(): void
+Router::get_default(function()
 {
-	echo '<h3>Esto es solo de prueba</h3>';
-	/*
-	$url = 'https://api.currencyapi.com/v3/range?currencies=abc&apikey=' . CURRENCY_API_KEY;
-	$headers = get_headers($url, true);
-
-	foreach($headers as $k => $v)
-		echo "<p>$k: $v</p>";
-	*/
+	header('Location: /');
 });
 
 Router::public_dir(

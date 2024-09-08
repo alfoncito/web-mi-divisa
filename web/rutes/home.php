@@ -27,19 +27,28 @@ function home(): void
 								type='button'
 								id='btn-current'
 							>
-								Precio dolar
+								<img
+									src='/public/img/currency-dollar.svg'
+									alt='Precio del dólar'
+								/>
 							</button>
 							<button
 								type='button'
 								id='btn-exchange'
 							>
-								Conversor
+								<img
+									src='/public/img/currency-exchange.svg'
+									alt='Conversor de monedas'
+								/>
 							</button>
 							<button
 								type='button'
 								id='btn-history'
 							>
-								Historico
+								<img
+									src='/public/img/graph-up.svg'
+									alt='Histórico del dólar'
+								/>
 							</button>
 						</div>
 						<h2 id='currency-title'></h2>
