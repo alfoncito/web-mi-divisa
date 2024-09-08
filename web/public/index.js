@@ -8,12 +8,20 @@ const currencyApp = () => {
 		$btnHistory = getElm('btn-history'),
 		changeHandler;
 
-	const changeTo = (title, tab) => () => {
+	const changeTo = (title, tab) => (e) => {
+		let $tab = e.target.closest('.tab');
+		
 		changeHandler?.();
 		changeHandler = null;
 
 		$title.textContent = title;
 		$body.innerHTML = '';
+
+		$btnCurrent.classList.remove('active');
+		$btnExchange.classList.remove('active');
+		$btnHistory.classList.remove('active');
+
+		$tab.classList.add('active');
 
 		tab($body, onChange);
 	};
@@ -35,13 +43,16 @@ const currencyApp = () => {
 		changeTo('Histórico del dólar', historyTab)
 	);
 
-	changeTo('Precio del día', currentTab)();
+	changeTo('Precio del día', currentTab)({
+		target: $btnCurrent
+	});
 };
 
 const currentTab = ($body, onChange) => {
 	let aborter = new AbortController(),
 		$loader = createLoader();
 
+	$body.classList.add('flex-center');
 	$body.appendChild($loader);
 	fetch('/api-current', { signal: aborter.signal })
 		.then(res => res.json())
@@ -51,13 +62,18 @@ const currentTab = ($body, onChange) => {
 			$body.removeChild($loader);
 			$body.insertAdjacentHTML(
 				'afterbegin',
-				`<h3>${roundAccuracy(value, 3)} BS.</h3>`
+				`
+					<h3 class='current-price'>
+						${roundAccuracy(value, 2)} <span class='symbol'>BS.</span>
+					</h3>
+				`
 			);
 		})
 		.catch(() => {});
 
 	onChange(() => {
 		aborter.abort();
+		$body.classList.remove('flex-center');
 	});
 };
 
@@ -77,8 +93,12 @@ const exchangeTab = ($body, onChange) => {
 
 	$inputResult = getElm('input-result');
 
-	fromField = createSymbolField('input-from', suggList);
-	toField = createSymbolField('input-to', suggList);
+	fromField = createSymbolField(
+		'input-from',
+		suggList,
+		['left']
+	);
+	toField = createSymbolField('input-to', suggList, ['right']);
 
 	const handleExchange = (e) => {
 		let value = e.target.value;
@@ -91,7 +111,7 @@ const exchangeTab = ($body, onChange) => {
 			let result = parseFloat(value);
 
 			result *= exchangePrice;
-			result = roundAccuracy(result, 3);
+			result = roundAccuracy(result, 2);
 			$inputResult.value = `${result} ${toField.getValue()}`;
 		} else {
 			$inputResult.value = 0;
@@ -140,7 +160,7 @@ const exchangeTab = ($body, onChange) => {
 
 	bindEvent('btn-change', {
 		click() {
-			if (!(fromField.isValid() || toField.isValid()))
+			if (!(fromField.isValid() && toField.isValid()))
 				return null;
 				
 			let $inputFrom = getElm('input-from'),
@@ -193,20 +213,29 @@ const exchangeTab = ($body, onChange) => {
 
 const htmlExchange = () => {
 	return `
-		<div>
-			<div>
-				<div>
-					<label for='input-from'>Desde</label>
+		<div class='form-exchange'>
+			<div class='form-exchange__symbols'>
+				<div class='input-field'>
+					<label
+						class='input-field__label'
+						for='input-from'
+					>
+						Desde
+					</label>
 					<input
+						class='input-field__input'
 						id='input-from'
 						type='text'
 						maxlength='3'
 						tabindex='1'
 						value='VES'
+						placeholder='VES, USD, EUR...'
+						autocomplete='off'
 					/>
 				</div>
 				<div>
 					<button
+						class='tab'
 						id='btn-change'
 						type='button'
 						tabindex='-1'
@@ -217,39 +246,64 @@ const htmlExchange = () => {
 						/>
 					</button>
 				</div>
-				<div>
-					<label for='input-to'>Hacia</label>
+				<div class='input-field'>
+					<label
+						class='input-field__label'
+						for='input-to'
+					>
+						Hacia
+					</label>
 					<input
+						class='input-field__input'
 						id='input-to'
 						type='text'
 						maxlength='3'
 						tabindex='2'
 						value='USD'
+						placeholder='VES, USD, EUR...'
+						autocomplete='off'
 					/>
 				</div>
 			</div>
-			<div>
-				<input 
-					id='input-amound'
-					type='number'
-					step='0.1'
-					min='0'
-					value='0'
-					tabindex='3'
-				/>
-				<input
-					id='input-result'
-					type='text'
-					value='0'
-					readonly
-					tabindex='-1'
-				/>
+			<div class='form-exchange__exchange'>
+				<div class='input-fake'>
+					<label
+						class='input-fake__label'
+						for='input-amound'
+					></label>
+					<input
+						class='input-discrete'
+						id='input-amound'
+						title='Cantidad'
+						type='number'
+						step='0.1'
+						min='0'
+						value='0'
+						tabindex='3'
+						placeholder='¿Cuantó tienes?'
+					/>
+				</div>
+				<div class='input-fake'>
+					<label
+						class='input-fake__label'
+						for='input-result'
+					></label>
+					<input
+						class='input-discrete'
+						id='input-result'
+						title='Resultado'
+						type='text'
+						value='0'
+						readonly
+						tabindex='-1'
+					/>
+				</div>
 			</div>
 		</div>
 	`;
 };
 
-const createSymbolField = (inputId, suggList) => {
+const createSymbolField = (inputId, suggList, classes) => {
 	let $input = getElm(inputId),
 		_watcher = null;
 	
@@ -258,7 +312,7 @@ const createSymbolField = (inputId, suggList) => {
 			let value = e.target.value;
 
 			if (!(suggList.matched(value) || suggList.isVisible())) {
-				suggList.insertAfter($input);
+				suggList.insertAfter($input, classes);
 				suggList.suggest(value);
 			}
 
@@ -277,7 +331,7 @@ const createSymbolField = (inputId, suggList) => {
 			let value = e.target.value;
 
 			if (!suggList.isVisible() && !suggList.matched(value)) {
-				suggList.insertAfter($input);
+				suggList.insertAfter($input, classes);
 				suggList.suggest(value);
 			} else if (suggList.isVisible()) {
 				suggList.suggest(value);
@@ -308,7 +362,8 @@ const createSymbolField = (inputId, suggList) => {
 
 const createSuggList = () => {
 	let _symbols = null,
-		_$table = null,
+		_$sugg = null,
+		_$suggContainer = null,
 		_watcher = null,
 		_text = null,
 		_$input = null;
@@ -320,27 +375,33 @@ const createSuggList = () => {
 			suggest(_text);
 	};
 
-	const insertAfter = ($input) => {
+	const insertAfter = ($input, clasess = []) => {
 		clear();
 
-		_$table = document.createElement('table');
+		_$suggContainer = document.createElement('div');
+		_$suggContainer.classList.add(
+			'suggestion-container',
+			...clasess
+		);
+		
+		_$sugg = document.createElement('ul');
+		_$sugg.classList.add('suggestion');
 		_$input = $input;
 		
-		_$table.appendChild(document.createElement('tbody'));
-		_$table.style.backgroundColor = 'indigo';
-		_$table.setAttribute('id', 'sugg-table');
-		
-		_$input.insertAdjacentElement('afterend', _$table);
+		_$sugg.setAttribute('id', 'sugg-list');
+
+		_$suggContainer.appendChild(_$sugg);
+		_$input.insertAdjacentElement('afterend', _$suggContainer);
 
 		document.addEventListener('click', _handleClick);
 	};
 
 	const _handleClick = (e) => {
 		if (
-			e.target.matches('#sugg-table') ||
-			e.target.matches('#sugg-table *')
+			e.target.matches('#sugg-list') ||
+			e.target.matches('#sugg-list *')
 		) {
-			let $row = e.target.closest('tr');
+			let $row = e.target.closest('.js-sugg-item');
 
 			if ($row) {
 				let value = $row.dataset.symbol;
@@ -379,7 +440,7 @@ const createSuggList = () => {
 
 		let $frag = document.createDocumentFragment();
 
-		_$table.firstElementChild.innerHTML = '';
+		_$sugg.innerHTML = '';
 		if (symsMatched.length > 0) {
 			symsMatched.forEach(sym => {
 				$frag.appendChild(_suggestRow(sym));
@@ -394,28 +455,23 @@ const createSuggList = () => {
 			);
 		}
 
-		_$table.firstElementChild.appendChild($frag);
+		_$sugg.appendChild($frag);
 	};
 
 	const _suggestRow = (sym) => {
-		let $row = document.createElement('tr');
+		let $row = document.createElement('li');
 
+		$row.classList.add('suggestion__item', 'js-sugg-item');
 		$row.dataset.symbol = sym.symbol;
-		$row.insertAdjacentHTML(
-			'beforeend',
-			`<td><b>${sym.symbol}</b></td>`
-		);
-		$row.insertAdjacentHTML(
-			'beforeend',
-			`<td>${sym.name}</td>`
-		);
+		$row.innerHTML = `<b>${sym.symbol}</b> ${sym.name}`;
 		return $row;
 	};
 
 	const _emptyRow = (msg) => {
-		let $row = document.createElement('tr');
+		let $row = document.createElement('li');
 
-		$row.insertAdjacentHTML('afterbegin', `<td>${msg}</td>`);
+		$row.classList.add('suggestion__item');
+		$row.textContent = msg;
 		return $row;
 	};
 
@@ -426,13 +482,14 @@ const createSuggList = () => {
 	const clear = () => {
 		if (!isVisible()) return null;
 		
-		_$table.remove();
-		_$table = null;
+		_$suggContainer.remove();
+		_$suggcontainer = null;
+		_$sugg = null;
 		_$input = null;
 		document.removeEventListener('click', _handleClick);
 	};
 
-	const isVisible = () => _$table !== null;
+	const isVisible = () => _$sugg !== null;
 
 	const matched = (symbol) => {
 		if (!_symbols) return false;
@@ -456,20 +513,21 @@ const historyTab = ($body, onChange) => {
 	let aborter = new AbortController(),
 		$loader = createLoader();
 
+	$body.classList.add('flex-center');
 	$body.appendChild($loader);
 	const handleFetch = (data) => {
 		let $container = createHistoricalContainer(),
 			max = calcIntervalMax(data.result, 5);
 
-		$container.appendChild(
+		/*$container.appendChild(
 			createHistoricalValuesAxis(5, max)
-		);
+		);*/
 		$container.appendChild(
-			createHistoricalChart(data.result, max)
+			createHistoricalChart(data.result.reverse(), max)
 		);
-		$container.appendChild(
+		/*$container.appendChild(
 			createHistoricalDateAxis(data.result)
-		);
+		);*/
 
 		$body.removeChild($loader);
 		$body.appendChild($container);
@@ -486,6 +544,7 @@ const historyTab = ($body, onChange) => {
 		});
 
 	onChange(() => {
+		$body.classList.remove('flex-center');
 		aborter.abort(
 			new DOMException(
 				'Petición abortada por el usuario',
@@ -513,6 +572,7 @@ const calcIntervalMax = (historical, numIntervals) => {
 const createHistoricalContainer = () => {
 	let $div = document.createElement('div');
 
+	$div.classList.add('chart');
 	return $div;
 };
 
@@ -520,7 +580,8 @@ const createHistoricalValuesAxis = (numIntervals, max) => {
 	let $div = document.createElement('div'),
 		interval = max / numIntervals;
 
-	for(let i = 1; i <= numIntervals; i++) {
+	$div.classList.add('chart__y-axis');
+	for(let i = 0; i <= numIntervals; i++) {
 		let value = i * interval;
 		
 		$div.insertAdjacentHTML(
@@ -533,11 +594,12 @@ const createHistoricalValuesAxis = (numIntervals, max) => {
 
 const createHistoricalChart = (historical, max) => {
 	let $svg = document.createElementNS(NS, 'svg'),
-		xInterval = 15 / historical.length,
+		xInterval = 30 / historical.length,
 		xOffset = xInterval / 2,
 		dots = [];
 
-	$svg.setAttribute('viewBox', '0 0 15 10');
+	$svg.classList.add('chart__graph');
+	$svg.setAttribute('viewBox', '0 0 30 10');
 
 	historical.forEach((h, index) => {
 		let x = index * xInterval + xOffset,
@@ -561,9 +623,9 @@ const createLineHistorical = (dots) => {
 		d += `${comm}${dot.x},${dot.y}`;
 	});
 
+	$path.classList.add('historical__line');
 	$path.setAttribute('d', d);
 	$path.setAttribute('fill', 'none');
-	$path.setAttribute('stroke', 'lime');
 	$path.setAttribute('stroke-width', 0.1);
 
 	return $path;
@@ -573,14 +635,15 @@ const createDotHistorical = (x, y, h) => {
 	let $cir = document.createElementNS(NS, 'circle'),
 		$popover = null;
 
+	$cir.classList.add('historical__dot');
 	$cir.setAttribute('cx', x);
 	$cir.setAttribute('cy', y);
-	$cir.setAttribute('r', 0.3);
+	$cir.setAttribute('r', 0.5);
 	$cir.setAttribute('fill', 'lime');
 
 	bindEvent($cir, {
 		mouseenter() {
-			$popover = createPopover(x, y, h);
+			$popover = createPopover(x, y, h, $cir);
 			document.body.appendChild($popover);
 		},
 		mouseleave() {
@@ -591,15 +654,27 @@ const createDotHistorical = (x, y, h) => {
 	return $cir;
 };
 
-const createPopover = (x, y, h) => {
-	let $div = document.createElement('div');
+const createPopover = (x, y, h, $elm) => {
+	let $div = document.createElement('div'),
+		bound = $elm.getBoundingClientRect();
 
 	$div.classList.add('popover');
+	$div.style.top = `${bound.y}px`;
+	$div.style.left = `${bound.x + bound.width / 2}px`;
 	$div.insertAdjacentHTML(
 		'afterbegin',
 		`
-			<time datetime='${h.date}'>${h.date}</time>
-			<h4>${roundAccuracy(h.value, 3)} VES</h4>
+			<time
+				class='popover__time'
+				datetime='${h.date}'
+			>
+				${h.date}
+			</time>
+			<h4
+				class='popover__price'
+			>
+				${roundAccuracy(h.value, 2)} <span class='symbol'>BS.</span>
+			</h4>
 		`
 	);
 
@@ -609,6 +684,7 @@ const createPopover = (x, y, h) => {
 const createHistoricalDateAxis = (historical) => {
 	let $div = document.createElement('div');
 
+	$div.classList.add('chart__x-axis');
 	historical.forEach(h => {
 		$div.insertAdjacentHTML(
 			'beforeend',

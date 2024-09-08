@@ -1,0 +1,4 @@
+RewriteEngine on
+Options +FollowSymLinks
+
+RewriteRule .* web/index.php [L]
