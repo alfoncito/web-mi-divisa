@@ -15,4 +15,7 @@ deny from all
 
 IndexIgnore *
 
+RewriteCond %{HTTPS} off
+Rewriterule ^.*$ https://%{HTTP_HOST} [L,R=301]
+
 RewriteRule ^.*$ web/index.php [L]
