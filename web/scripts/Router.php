@@ -60,6 +60,9 @@ class Router
 
 		foreach(self::$rutes as list($regexp, $func)) {
 			if (preg_match($regexp, $uri)) {
+				$host = $_SERVER['SERVER_NAME'];
+				header("Access-Control-Allow-Origin: $host");
+
 				$func();
 				exit();
 			}

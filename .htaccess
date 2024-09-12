@@ -1,4 +1,18 @@
 RewriteEngine on
 Options +FollowSymLinks
+Options All -Indexes
 
-RewriteRule .* web/index.php [L]
+AddDefaultCharset UTF-8
+DefaultLanguage es-ES
+
+php_value display_errors Off
+php_value date.timezone America/Caracas
+
+<Files .htaccess>
+order allow,deny
+deny from all
+</Files>
+
+IndexIgnore *
+
+RewriteRule ^.*$ web/index.php [L]

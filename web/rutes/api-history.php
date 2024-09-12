@@ -2,22 +2,26 @@
 
 function api_history(): void
 {
-	header('Content-type: application/json');
 	$response = null;
+	$code = null;
 
 	try {
+		$code = 200;
 		$response = [
 			'success' => true,
-			'code' => 200,
+			'code' => $code,
 			'result' => Currency::history()
 		];
 	} catch (Exception $e) {
+		$code = 500;
 		$response = [
 			'success' => false,
-			'code' => 500,
+			'code' => $code,
 			'result' => null
 		];
 	}
 
+	header('Content-type: application/json');
+	http_response_code($code);
 	echo json_encode($response);
 }

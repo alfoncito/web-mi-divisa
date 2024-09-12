@@ -280,7 +280,7 @@ const htmlExchange = () => {
 						min='0'
 						value='0'
 						tabindex='3'
-						placeholder='¿Cuantó tienes?'
+						placeholder='¿Cuanto tienes?'
 					/>
 				</div>
 				<div class='input-fake'>
@@ -594,12 +594,13 @@ const createHistoricalValuesAxis = (numIntervals, max) => {
 
 const createHistoricalChart = (historical, max) => {
 	let $svg = document.createElementNS(NS, 'svg'),
-		xInterval = 30 / historical.length,
+		width = 20,
+		xInterval = width / historical.length,
 		xOffset = xInterval / 2,
 		dots = [];
 
 	$svg.classList.add('chart__graph');
-	$svg.setAttribute('viewBox', '0 0 30 10');
+	$svg.setAttribute('viewBox', `0 0 ${width} 10`);
 
 	historical.forEach((h, index) => {
 		let x = index * xInterval + xOffset,
